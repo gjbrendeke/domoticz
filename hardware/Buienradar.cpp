@@ -12,6 +12,8 @@
 #include "../main/SQLHelper.h"
 #include <sstream>
 #include <iomanip>
+// GJB210304: required by network connect delay mechanism
+#include <sys/time.h>
 
 #define BUIENRADAR_URL "https://data.buienradar.nl/2.0/feed/json"
 #define BUIENRADAR_ACTUAL_URL "https://observations.buienradar.nl/1.0/actual/weatherstation/" //station_id
@@ -51,6 +53,39 @@ std::string ReadFile(std::string filename)
 		(std::istreambuf_iterator<char>()));
 	file.close();
 	return sResult;
+}
+#endif
+
+/** GJB210311: no itoa on std (GCC) Linux libs
+  * 
+  * C++ version 0.4 char* style "itoa":
+  * Written by Lukás Chmela
+  * Released under GPLv3.
+  */
+#ifndef GJB_ITOA
+#define GJB_ITOA "YES"
+char* gjb_itoa(int value, char* result, int base) {
+	// check that the base if valid
+	if (base < 2 || base > 36) { *result = '\0'; return result; }
+
+	char* ptr = result, *ptr1 = result, tmp_char;
+	int tmp_value;
+
+	do {
+		tmp_value = value;
+		value /= base;
+		*ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
+	} while ( value );
+
+	// Apply negative sign
+	if (tmp_value < 0) *ptr++ = '-';
+	*ptr-- = '\0';
+	while(ptr1 < ptr) {
+		tmp_char = *ptr;
+		*ptr--= *ptr1;
+		*ptr1++ = tmp_char;
+	}
+	return result;
 }
 #endif
 
@@ -316,6 +351,18 @@ bool CBuienRadar::GetStationDetails()
 
 void CBuienRadar::GetMeterDetails()
 {
+	//
+	// GJB210304: soem vars to manage connection problems
+	// If there are more then "gjb_br_max" connection problems within "gjb_br_seconds" timeslot we log an error, otherwise we consider
+	// this to be a minor glitch
+	int gjb_br_cnt = 0;
+	int gjb_br_max = 5;
+	int gjb_br_seconds = 5;
+	int gjb_br_t1 = 0;
+	int gjb_br_t2 = 0;
+	char br_gjb_str[5];
+	struct timeval gjb_tv;
+	
 	if (m_sStationName.empty())
 	{
 		// Station Name not set, get station details
@@ -332,8 +379,44 @@ void CBuienRadar::GetMeterDetails()
 	std::string szUrl = BUIENRADAR_ACTUAL_URL + std::to_string(m_iStationID);
 	if (!HTTPClient::GET(szUrl, sResult))
 	{
-		Log(LOG_ERROR, "Problem Connecting to Buienradar! (Check your Internet Connection!)");
-		return;
+		//
+		// GJB210304: why, o tell me why ..
+		// solution: add a counter for the number of attempts we will consider acceptable
+		//
+		// Increment the counter
+		gjb_br_cnt++;
+
+		// pass it as string to Log
+		// printf("15 in binary is %s\n",  gjb_itoa(15, br_gjb_str, 2));
+		Log(LOG_STATUS, "Increment GJB_BR_CNT: %d ", gjb_br_cnt );
+		if (gjb_br_t1 == 0) {
+			gettimeofday(&gjb_tv, NULL);
+			gjb_br_t1=gjb_tv.tv_sec;
+			gjb_br_t2=gjb_tv.tv_sec;
+		} else {
+			gettimeofday(&gjb_tv, NULL);
+			gjb_br_t2=gjb_tv.tv_sec;
+			if ( (gjb_br_t2 - gjb_br_t1) > gjb_br_seconds ) {
+				gjb_br_t1=0;
+				gjb_br_t2=0;
+				gjb_br_cnt=0;
+			} else {
+				//GJB TODO (uitwerken, nog niet klaar!!)
+			}
+		}
+		if (gjb_br_cnt > gjb_br_max) {
+			Log(LOG_ERROR, "Problem Connecting to Buienradar! (Check your Internet Connection!)");
+			// reset counters
+			gjb_br_cnt=0;
+			gjb_br_t1=0;
+			gjb_br_t2=0;
+
+			return;
+		}
+	} else {
+		// GJB, oeps
+		// Log(LOG_STATUS, "Keep GJB_BR_CNT: ", gjb_itoa(15, br_gjb_str, 2) );
+		Log(LOG_STATUS, "Keep GJB_BR_CNT: %d", gjb_br_cnt );
 	}
 #ifdef DEBUG_BUIENRADARW
 	SaveString2Disk(sResult, "E:\\br_actual.json");
