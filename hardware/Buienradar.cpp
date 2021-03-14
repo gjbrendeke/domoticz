@@ -56,6 +56,19 @@ std::string ReadFile(std::string filename)
 }
 #endif
 
+//
+// GJB210304: some vars to manage connection problems
+// If there are more then "gjb_br_max" connection problems within "gjb_br_seconds" timeslot we log an error, otherwise we consider
+// this to be a minor glitch
+int gjb_br_cnt = 0;
+int gjb_br_max = 5;
+// GetMeterDetails is caaled eveery 10 minutes, we will allow 5 failed attempts (ie: half an hour)
+int gjb_br_seconds = 3000;
+int gjb_br_t1 = 0;
+int gjb_br_t2 = 0;
+char br_gjb_str[5];
+struct timeval gjb_tv;
+
 /** GJB210311: no itoa on std (GCC) Linux libs
   * 
   * C++ version 0.4 char* style "itoa":
@@ -351,18 +364,6 @@ bool CBuienRadar::GetStationDetails()
 
 void CBuienRadar::GetMeterDetails()
 {
-	//
-	// GJB210304: soem vars to manage connection problems
-	// If there are more then "gjb_br_max" connection problems within "gjb_br_seconds" timeslot we log an error, otherwise we consider
-	// this to be a minor glitch
-	int gjb_br_cnt = 0;
-	int gjb_br_max = 5;
-	int gjb_br_seconds = 5;
-	int gjb_br_t1 = 0;
-	int gjb_br_t2 = 0;
-	char br_gjb_str[5];
-	struct timeval gjb_tv;
-	
 	if (m_sStationName.empty())
 	{
 		// Station Name not set, get station details
@@ -382,41 +383,45 @@ void CBuienRadar::GetMeterDetails()
 		//
 		// GJB210304: why, o tell me why ..
 		// solution: add a counter for the number of attempts we will consider acceptable
-		//
+		//           within a certain time frame
+		//           NOTE: GetMeterDetails is called once every 10 minutes
 		// Increment the counter
 		gjb_br_cnt++;
 
-		// pass it as string to Log
-		// printf("15 in binary is %s\n",  gjb_itoa(15, br_gjb_str, 2));
-		Log(LOG_STATUS, "Increment GJB_BR_CNT: %d ", gjb_br_cnt );
+		// is the clock already ticking?
 		if (gjb_br_t1 == 0) {
 			gettimeofday(&gjb_tv, NULL);
 			gjb_br_t1=gjb_tv.tv_sec;
 			gjb_br_t2=gjb_tv.tv_sec;
+			Log(LOG_STATUS, "Increment GJB_BR_CNT: %d (T1: %d T2: %d)", gjb_br_cnt, gjb_br_t1, gjb_br_t2 );
 		} else {
 			gettimeofday(&gjb_tv, NULL);
 			gjb_br_t2=gjb_tv.tv_sec;
 			if ( (gjb_br_t2 - gjb_br_t1) > gjb_br_seconds ) {
-				gjb_br_t1=0;
-				gjb_br_t2=0;
-				gjb_br_cnt=0;
+				Log(LOG_STATUS, "Times up GJB_BR_CNT: %d (T1: %d T2: %d)", gjb_br_cnt, gjb_br_t1, gjb_br_t2 );
+				// force the ERROR message and counter reset
+				gjb_br_cnt=gjb_br_max + 1;
 			} else {
 				//GJB TODO (uitwerken, nog niet klaar!!)
+				Log(LOG_STATUS, "Clock is still ticking GJB_BR_CNT: %d (T1: %d T2: %d)", gjb_br_cnt, gjb_br_t1, gjb_br_t2 );
 			}
 		}
 		if (gjb_br_cnt > gjb_br_max) {
-			Log(LOG_ERROR, "Problem Connecting to Buienradar! (Check your Internet Connection!)");
+			Log(LOG_ERROR, "GetMeterDetails: Problem Connecting to Buienradar! (Check your Internet Connection!)");
 			// reset counters
 			gjb_br_cnt=0;
 			gjb_br_t1=0;
 			gjb_br_t2=0;
-
-			return;
-		}
+		} 
+		// NO NEW DATA: return
+		return;
 	} else {
-		// GJB, oeps
-		// Log(LOG_STATUS, "Keep GJB_BR_CNT: ", gjb_itoa(15, br_gjb_str, 2) );
-		Log(LOG_STATUS, "Keep GJB_BR_CNT: %d", gjb_br_cnt );
+		// reset all counters, we have received data
+
+		Log(LOG_STATUS, "RESET GJB_BR_<VALUES>: %d (T1: %d T2: %d)", gjb_br_cnt, gjb_br_t1, gjb_br_t2 );
+		gjb_br_t1=0;
+		gjb_br_t2=0;
+		gjb_br_cnt=0;
 	}
 #ifdef DEBUG_BUIENRADARW
 	SaveString2Disk(sResult, "E:\\br_actual.json");
@@ -593,7 +598,7 @@ void CBuienRadar::GetRainPrediction()
 	}
 	if (!bret)
 	{
-		Log(LOG_ERROR, "Problem Connecting to Buienradar! (Check your Internet Connection!)");
+		Log(LOG_ERROR, "GetRainPrediction: Problem Connecting to Buienradar! (Check your Internet Connection!)");
 		return;
 	}
 	if (sResult.empty())
