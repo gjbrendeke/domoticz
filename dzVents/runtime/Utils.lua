@@ -8,7 +8,7 @@ local self = {
 	LOG_INFO = 3,
 	LOG_WARNING = 3,
 	LOG_DEBUG = 4,
-	DZVERSION = '3.1.6',
+	DZVERSION = '3.1.7',
 }
 
 function jsonParser:unsupportedTypeEncoder(value_of_unsupported_type)
@@ -92,6 +92,10 @@ self.fuzzyLookup = function (search, target) -- search must be string/number, ta
 		end
 		return res[searchLength][targetLength]
 	end
+end
+
+function self.containsWord(input, word)
+	return input:find("%f[%w_%-]" .. (word or ''):gsub('-','%%-') .. "%f[%W_]")
 end
 
 function self.setLogMarker(logMarker)
