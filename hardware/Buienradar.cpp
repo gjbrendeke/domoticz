@@ -393,17 +393,17 @@ void CBuienRadar::GetMeterDetails()
 			gettimeofday(&gjb_tv, NULL);
 			gjb_br_t1=gjb_tv.tv_sec;
 			gjb_br_t2=gjb_tv.tv_sec;
-			Log(LOG_STATUS, "Increment GJB_BR_CNT: %d (T1: %d T2: %d)", gjb_br_cnt, gjb_br_t1, gjb_br_t2 );
+			Log(LOG_STATUS, "GetMeterDetails: Increment GJB_BR_CNT: %d (T1: %d T2: %d)", gjb_br_cnt, gjb_br_t1, gjb_br_t2 );
 		} else {
 			gettimeofday(&gjb_tv, NULL);
 			gjb_br_t2=gjb_tv.tv_sec;
 			if ( (gjb_br_t2 - gjb_br_t1) > gjb_br_seconds ) {
-				Log(LOG_STATUS, "Times up GJB_BR_CNT: %d (T1: %d T2: %d)", gjb_br_cnt, gjb_br_t1, gjb_br_t2 );
+				Log(LOG_STATUS, "GetMeterDetails: Times up GJB_BR_CNT: %d (T1: %d T2: %d)", gjb_br_cnt, gjb_br_t1, gjb_br_t2 );
 				// force the ERROR message and counter reset
 				gjb_br_cnt=gjb_br_max + 1;
 			} else {
 				//GJB TODO (uitwerken, nog niet klaar!!)
-				Log(LOG_STATUS, "Clock is still ticking GJB_BR_CNT: %d (T1: %d T2: %d)", gjb_br_cnt, gjb_br_t1, gjb_br_t2 );
+				Log(LOG_STATUS, "GetMeterDetails: Clock is still ticking GJB_BR_CNT: %d (T1: %d T2: %d)", gjb_br_cnt, gjb_br_t1, gjb_br_t2 );
 			}
 		}
 		if (gjb_br_cnt > gjb_br_max) {
@@ -418,7 +418,7 @@ void CBuienRadar::GetMeterDetails()
 	} else {
 		// reset all counters, we have received data
 
-		Log(LOG_STATUS, "RESET GJB_BR_<VALUES>: %d (T1: %d T2: %d)", gjb_br_cnt, gjb_br_t1, gjb_br_t2 );
+		Log(LOG_STATUS, "GetMeterDetails: RESET GJB_BR_<VALUES>: %d (T1: %d T2: %d)", gjb_br_cnt, gjb_br_t1, gjb_br_t2 );
 		gjb_br_t1=0;
 		gjb_br_t2=0;
 		gjb_br_cnt=0;
@@ -596,6 +596,7 @@ void CBuienRadar::GetRainPrediction()
 			sleep_seconds(2);
 		}
 	}
+	
 	if (!bret)
 	{
 		Log(LOG_ERROR, "GetRainPrediction: Problem Connecting to Buienradar! (Check your Internet Connection!)");
@@ -603,7 +604,7 @@ void CBuienRadar::GetRainPrediction()
 	}
 	if (sResult.empty())
 	{
-		// Log(LOG_ERROR, "Problem getting Rainprediction: no prediction available at Buienradar");
+		Log(LOG_ERROR, "Problem getting Rainprediction: no prediction available at Buienradar");
 		// no data to process, so don't update the sensros
 		return;
 	}
