@@ -8,7 +8,7 @@ local self = {
 	LOG_INFO = 3,
 	LOG_WARNING = 3,
 	LOG_DEBUG = 4,
-	DZVERSION = '3.1.7',
+	DZVERSION = '3.1.8',
 }
 
 function jsonParser:unsupportedTypeEncoder(value_of_unsupported_type)
@@ -146,6 +146,19 @@ function self.stringSplit(text, sep, convertNumber, convertNil)
 	return t
 end
 
+function self.splitLine (line, word)
+	local start = 1
+	local first, last = 0
+	local t = {}
+	while true do
+		first, last = line:find('%s+'.. word .. '%s+', start)
+		table.insert(t,line:sub(start, ( ( first and first - 1) or #line)))
+		if not first then break end
+		start = last + 1
+	end
+	return t
+end
+
 function self.stringToSeconds(str)
 
 	local now = os.date('*t')
@@ -200,7 +213,10 @@ end
 function self.round(value, decimals)
 	local nVal = tonumber(value)
 	local nDec = ( decimals == nil and 0 ) or tonumber(decimals)
-	if nVal >= 0 and nDec > 0 then
+	if nVal == nil then
+		self.log(self.toStr(value) .. ' is not a number!', self.LOG_ERROR)
+		return
+	elseif nVal >= 0 and nDec > 0 then
 		return math.floor( (nVal * 10 ^ nDec) + 0.5) / (10 ^ nDec)
 	elseif nVal >=0 then
 		return math.floor(nVal + 0.5)
@@ -282,13 +298,16 @@ function self.isJSON(str, content)
 	local jsonPatternOK = '^%s*%[*%s*{.+}%s*%]*%s*$'
 	local jsonPatternOK2 = '^%s*%[.+%]*%s*$'
 	local ret = ( str:match(jsonPatternOK) == str ) or ( str:match(jsonPatternOK2) == str ) or content:find('application/json')
-	-- self.log('ret ' .. _.str(ret) , self.LOG_FORCE)
 	return ret ~= nil
 end
 
-function self.fromJSON(json, fallback)
+function self.fromJSON(json, fallback, deSerialize)
 
-	if json == nil or json == '' then
+	local deSerializeJSON  = function(j)
+		return j:gsub('\\"','"'):gsub('"{','{'):gsub('"%["','["'):gsub('"%]"','"]'):gsub('}"','}'):gsub('"%[{"','[{"'):gsub('"}%]"','"}]'):gsub('%]"}',']}')
+	end
+
+	if type(json) ~= 'string' or json == '' then
 		return fallback
 	end
 
@@ -302,6 +321,8 @@ function self.fromJSON(json, fallback)
 
 	if self.isJSON(json) then
 
+		if deSerialize then json = deSerializeJSON(json) end
+
 		local parse = function(j)
 			return jsonParser:decode(j)
 		end
@@ -311,9 +332,9 @@ function self.fromJSON(json, fallback)
 		if (ok) then
 			return results
 		end
-		self.log('Error parsing json to LUA table: ' .. _.str(results) , self.LOG_ERROR)
+		self.log('Error parsing json to LUA table: ' .. self.toStr(results) , self.LOG_ERROR)
 	else
-		self.log('Error parsing json to LUA table: (invalid json string) ' .. _.str(json) , self.LOG_ERROR)
+		self.log('Error parsing json to LUA table: (invalid json string) ' .. self.toStr(json) , self.LOG_ERROR)
 	end
 
 	return fallback
@@ -408,9 +429,9 @@ function self.fromXML(xml, fallback)
 		if (ok) then
 			return results
 		end
-		-- self.log('Error parsing xml to Lua table: ' .. _.str(results), self.LOG_ERROR)
+		-- self.log('Error parsing xml to Lua table: ' .. self.toStr(results), self.LOG_ERROR)
 	else
-		self.log('Error parsing xml to LUA table: (invalid xml string) ' .. _.str(xml) , self.LOG_ERROR)
+		self.log('Error parsing xml to LUA table: (invalid xml string) ' .. self.toStr(xml) , self.LOG_ERROR)
 	end
 	return fallback
 
@@ -434,7 +455,7 @@ function self.toXML(luaTable, header)
 		return results
 	end
 
-	self.log('Error converting LUA table to XML: ' .. _.str(results), self.LOG_ERROR)
+	self.log('Error converting LUA table to XML: ' .. self.toStr(results), self.LOG_ERROR)
 	return nil
 
 end
@@ -451,7 +472,7 @@ function self.toJSON(luaTable)
 		return results
 	end
 
-	self.log('Error converting LUA table to json: ' .. _.str(results), self.LOG_ERROR)
+	self.log('Error converting LUA table to json: ' .. self.toStr(results), self.LOG_ERROR)
 	return nil
 
 end

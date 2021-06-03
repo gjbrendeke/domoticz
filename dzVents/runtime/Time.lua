@@ -1,6 +1,6 @@
 local utils = require('Utils')
 local _MS -- kind of a cache so we don't have to extract ms every time
-local gTimes --
+local gTimes
 local ruleWords = {}
 
 local isEmpty = function(v)
@@ -14,7 +14,7 @@ end
 
 local function getSMs(s)
 	local ms = 0
-	local parts = utils.stringSplit(s, '.') -- do string splitting instead of math stuff.. can't seem to get the floating points right
+	local parts = utils.stringSplit(s, '.') -- do string split instead of math stuff.
 	s = tonumber(parts[1])
 	if (parts[2] ~= nil) then
 		-- should always be three digits!!
@@ -32,7 +32,7 @@ local function _getMS()
 
 	if (_MS == nil) then
 
-		local dzCurrentTime = _G.globalvariables.currentTime
+		local dzCurrentTime = globalvariables.currentTime
 		local y, mon, d, h, min, s = parseDate(dzCurrentTime)
 		local ms
 		s, ms = getSMs(s)
@@ -271,8 +271,8 @@ local function Time(sDate, isUTC, _testMS)
 	self.isdst = time.isdst
 
 	if (_G.TESTMODE) then
-		_G = _G or {} -- Only used when testing testTime.lua
-		_G.timeofday = _G.timeofday or {} -- Only used when testing testTime.lua
+--		_G = _G or {} -- Only used when testing testTime.lua
+		timeofday = timeofday or {} -- Only used when testing testTime.lua
 		function self._getUtilsInstance()
 			return utils
 		end
@@ -520,7 +520,6 @@ local function Time(sDate, isUTC, _testMS)
 			return nil
 		end
 
-		local _ = require('lodash')
 		local dateTable = utils.stringSplit(dates,',') -- get all date(ranges)
 
 		-- remove spaces and add a comma
@@ -625,7 +624,7 @@ local function Time(sDate, isUTC, _testMS)
 
 		local astronomicalString = rule:match('at%s+(%a+)') or ''
 		if type(gTimes[astronomicalString]) == 'boolean' then
-			return gTimes[astronomicalString] or nil
+			return gTimes[astronomicalString]
 		end
 	end
 
@@ -819,7 +818,7 @@ local function Time(sDate, isUTC, _testMS)
 
 		gTimes = {}
 		for originalName, dzVentsName in pairs(LOOKUPASTRO) do
-			gTimes[dzVentsName] = _G.timeofday[originalName]
+			gTimes[dzVentsName] = timeofday[originalName]
 		end
 
 		gTimes.sunatsouthinminutes = gTimes.solarnooninminutes
@@ -833,12 +832,12 @@ local function Time(sDate, isUTC, _testMS)
 
 	-- returns true if self.time matches the rule
 	function self.matchesRule(rule, processed)
-
-		if type(rule) == 'string' and ( string.len(rule == nil and "" or rule) == 0) then
+		if type(rule) ~= 'string' or rule == '' then
+			utils.log('Time rule is not a string.',utils.LOG_ERROR)
 			return false
 
 		-- split into atomic time rules to simplify and speedup processing
-		elseif type(rule) == 'string' and not(processed) then
+		elseif not(processed) then
 			populateAstrotimes()
 			local rule = rule:lower()
 			local validPositiveRules = true
@@ -863,7 +862,13 @@ local function Time(sDate, isUTC, _testMS)
 			local positiveRules, negativeRules
 			local exceptPosition = rule:find(negativeKeyword)
 
-			if exceptPosition then
+			if rule:find('%s+or%s+') then
+				local subRules = utils.splitLine(rule, 'or')
+				for _, subRule in ipairs(subRules) do
+					if self.matchesRule( subRule ) then return true end
+				end
+				return false
+			elseif exceptPosition then
 				positiveRules = ruleSplit(rule:sub(1, exceptPosition - 1))
 				negativeRules = ruleSplit(rule:sub(exceptPosition + #negativeKeyword, #rule))
 			else

@@ -594,7 +594,7 @@ return {
 
 ## *timer* trigger rules
 There are several options for time triggers. It is important to know that Domoticz timer events only trigger once every minute, so one minute is the smallest interval for your timer scripts. However, dzVents gives you many options to have full control over when and how often your timer scripts are called (all times are in 24hr format and all dates in dd/mm):
-Keywords recognized are "at, between, every, except, in, on " ( except supported from version <sup>3.0.16</sup> onwards ).
+Keywords recognized are "at, between, every, except, in, on, or" ( except supported from version <sup>3.0.16</sup>, or supported from version <sup>3.1.8</sup> ).
 
 At every place you read <astroMoment> you can use one of:
 sunset, sunrise, solarnoon, midnight *, sunatsouth *, civiltwilightstart, civiltwilightend, astronomicaltwilightstart *, astronomicaltwilightend *, nauticaltwilightstart * or nauticaltwilightend *.
@@ -649,6 +649,7 @@ Full daynames are allowed in dzVents >= 3.1.7
 
 			'at 12:45-21:15 except at 18:00-18:30',	-- between 12:45 and 21:15 but not between 18:00 and 18:30 ( except supported from 3.0.16 onwards )
 			'at daytime except on sun',				-- between sunrise and sunset but not on Sundays
+			'at daytime or at 23:12',				-- between sunrise and sunset and also at 23:12
 
 			-- or if you want to go really wild and combine them:
 				'at nighttime at 21:32-05:44 every 5 minutes on sat, sun except at 04:00', -- except supported from 3.0.16 onwards
@@ -784,7 +785,7 @@ The domoticz object holds all information about your Domoticz system. It has glo
 	- **dumpTable(table,[levelIndicator],[osfile]<sup>3.0.0</sup>))**: *Function*: print table structure and contents to log
 	- **fileExists(path)**: *Function*: Returns `true` if the file (with full path) exists.
 	- **fromBase64(string)**: *Function*: Decode a base64 string
-	- **fromJSON(json, fallback)**: *Function*. Turns a json string to a Lua table. Example: `local t = domoticz.utils.fromJSON('{ "a": 1 }')`. Followed by: `print( t.a )` will print 1. Optional 2nd param fallback will be returned if json is nil or invalid.
+	- **fromJSON(json, fallback, deSerialize <sup>3.1.8</sup> )**: *Function*. Turns a json string to a Lua table. Example: `local t = domoticz.utils.fromJSON('{ "a": 1 }')`. Followed by: `print( t.a )` will print 1. Optional 2nd param fallback will be returned if json is nil or invalid. Optional 3rd param deSerialize (boolean) determines if the JSON should be deserialized before converting.
 	- **fromXML(xml, fallback )**: *Function*: Turns a xml string to a Lua table. Example: `local t = domoticz.utils.fromXML('<testtag>What a nice feature!</testtag>') Followed by: `print( t.texttag)` will print What a nice feature! Optional 2nd param fallback will be returned if xml is nil or invalid.
 	- **fuzzyLookup([string|array of strings], parm)**: *Function*: <sup>3.0.14</sup>. Search fuzzy matching string in parm. If parm is string it returns a number (lower is better match). If parm is array of strings it returns the best matching string.
 	- **groupExists(parm)**: *Function*: returns name when entered with a valid group ^3.0.12^ or groupID and return ID when entered with valid groupName or false when not a group, groupID or groupName of an existing group
@@ -807,6 +808,7 @@ The domoticz object holds all information about your Domoticz system. It has glo
 	- **round(number, [decimalPlaces])**: *Function*. Helper function to round numbers. Default decimalPlaces is 0.
 	- **sceneExists(parm)**: *Function*: returns name when entered with valid scene ^3.0.12^ or sceneID and return ID when entered with valid sceneName or false when not a scene, sceneID or sceneName of an existing scene
 	- **setLogMarker([marker])**: *Function*: set logMarker to 'marker'. Defaults to scriptname. Can be used to change logMarker based on flow in script
+	- **splitLine(string , splitOnWord ) <sup>3.1.8</sup>)**:*Function*. Helper function to split a line. Return is a table with line-segments.
 	- **stringSplit(string [,separator ] [,convertNumber ][,convertNil ]<sup>3.0.17</sup>)**:*Function*. Helper function to split a line in separate words. Default separator is space. Return is a table with separated words. Default convertNumber is false when set to true it will convert strings to number where possible. Word is ignored when nil, unless convertNil is set; in that case word will be set to the convertNil value.
 	- **stringToSeconds(str)**: *Function*: <sup>3.0.1</sup> Returns number of seconds between now and str.
 	*Examples:*
@@ -1052,7 +1054,9 @@ Note that if you do not find your specific device type here you can always inspe
  - **setPoint**: *Number*.
  - **mode**: *string* .
  - **untilDate**: *string in ISO 8601 format* or n/a .
- - **updateSetPoint(setPoint, mode, until)**: *Function*. Update set point. Mode can be domoticz.EVOHOME_MODE_AUTO, domoticz.EVOHOME_MODE_TEMPORARY_OVERRIDE, domoticz.EVOHOME_MODE_FOLLOW_SCHEDULE or domoticz.EVOHOME_MODE_PERMANENT_OVERRIDE. You can provide an until date (in ISO 8601 format e.g.: `os.date("!%Y-%m-%dT%TZ")`). Supports [command options](#Command_options_.28delay.2C_duration.2C_event_triggering.29).
+ - **updateSetPoint(setPoint, mode, until)**: *Function*. Update set point. Mode can be domoticz.EVOHOME_MODE_AUTO, domoticz.EVOHOME_MODE_TEMPORARY_OVERRIDE, domoticz.EVOHOME_MODE_FOLLOW_SCHEDULE or domoticz.EVOHOME_MODE_PERMANENT_OVERRIDE. You can provide an until date (in ISO 8601 format e.g.: `os.date("!%Y-%m-%dT%TZ")`). 
+When leaving out untilDate for mode domoticz.EVOHOME_MODE_TEMPORARY_OVERRIDE the untilDate will be the next scheduled zone-update time/date.
+Supports [command options](#Command_options_.28delay.2C_duration.2C_event_triggering.29).
 
 #### Gas
  - **counter**: *Number*. Value in m<sup>3</sup>
@@ -1218,6 +1222,7 @@ There are many switch-like devices. Not all methods are applicable for all switc
  - **levelActions**: *String*. |-separated list of url actions for selector switches.
  - **levelName**: *String*. Current level name for selector switches.
  - **levelNames**: *Table*. Table holding the level names for selector switch devices.
+ - **levelVal**: *Number*. Specific for selector switches.
  - **maxDimLevel**: *Number*.
  - **open()**: *Function*. Set device to Open if it supports it. Supports [command options](#Command_options_.28delay.2C_duration.2C_event_triggering.29).
  - **quietOn()**: *Function*. Set deviceStatus to on without physically switching it. Subsequent Events are triggered. Supports some [command options](#Command_options_.28delay.2C_duration.2C_event_triggering.29).
@@ -1401,15 +1406,17 @@ See table below
 
 {| class="wikitable"
 !width="17%"| option
-!align="center" width="12%"| state changes
-!align="center" width="12%"| update commands
+!align="center" width="10%"| state changes
+!align="center" width="11%"| update commands
 !align="center" width="12%"| user variables
 !align="center" width="12%"| updateSetpoint
-!align="center" width="12%"| snapshot
-!align="center" width="12%"| triggerIFTTT
+!align="center" width="8%"| snapshot
+!align="center" width="10%"| triggerIFTTT
+!align="center" width="12%"| execute ShellCommand
 !align="center" width="12%"| emitEvent
 |-
 | <code>afterAAA()</code><sup>1</sup>
+|align="center"| •
 |align="center"| •
 |align="center"| •
 |align="center"| •
@@ -1426,9 +1433,11 @@ See table below
 |align="center"| •
 |align="center"| •
 |align="center"| •
+|align="center"| •
 |-
 | <code>forAAA()</code>
 |align="center"| •
+|align="center"| n/a
 |align="center"| n/a
 |align="center"| n/a
 |align="center"| n/a
@@ -1443,6 +1452,7 @@ See table below
 |align="center"| •
 |align="center"| •
 |align="center"| n/a
+|align="center"| n/a
 |align="center"| •
 |-
 | <code>silent()</code>
@@ -1453,9 +1463,11 @@ See table below
 |align="center"| n/a
 |align="center"| n/a
 |align="center"| n/a
+|align="center"| n/a
 |-
 | <code>repeatAfterAAA()</code>
 |align="center"| •
+|align="center"| n/a
 |align="center"| n/a
 |align="center"| n/a
 |align="center"| n/a
@@ -1471,6 +1483,7 @@ See table below
 |align="center"| n/a
 |align="center"| n/a
 |align="center"| n/a
+|align="center"| n/a
 |-
 | <code>cancelQueuedCommands()</code>
 |align="center"| •
@@ -1480,8 +1493,10 @@ See table below
 |align="center"| n/a
 |align="center"| n/a
 |align="center"| n/a
+|align="center"| n/a
 
 |}
+
 ```
 
 #### Notes on table
@@ -1623,7 +1638,6 @@ local someTime = domoticz.time.makeTime() -- someTime = new domoticz time object
 		domoticz.time.dateToTimestamp('20201231235904','(%d%d%d%d)(%d%d)(%d%d)(%d%d)(%d%d)(%d%d)'))	            -- > 1609455544
 ```
 
- - **day**: *Number*
  - **day**: *Number*
  - **dayAbbrOfWeek**: *String*. sun,mon,tue,wed,thu,fri or sat
  - **daysAgo**: *Number*
@@ -2482,7 +2496,7 @@ return
 				callback = scriptVar,
 				timeout = timeoutinseconds,
 			})
-		elseif item.isShellCommandResponse and then
+		elseif item.isShellCommandResponse then
 			if item.statusCode == 0 then
 				... -- process result (in item.json, -item.xml, -item.lines or item.data)
 			end
@@ -2602,6 +2616,11 @@ _.print(_.indexOf({2, 3, 'x', 4}, 'x'))
 Check out the documentation [here](https://htmlpreview.github.io/?https://github.com/rwaaren/lodash.lua/blob/master/doc/index.html).
 
 # History [link to changes in previous versions](https://www.domoticz.com/wiki/DzVents_version_History).
+
+## [3.1.8] ##
+- Add option to deserialize serialized JSON strings
+- Add keyword or in time rules
+- Add utils.splitLine
 
 ## [3.1.7] ##
 - Fix for race condition at midnight when internal scripts are refreshed

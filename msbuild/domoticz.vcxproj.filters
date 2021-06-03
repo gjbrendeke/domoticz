@@ -1961,6 +1961,9 @@
     <ClInclude Include="..\hardware\XiaomiGateway.h">
       <Filter>Devices\Xiaomi Gateway</Filter>
     </ClInclude>
+    <ClInclude Include="..\hardware\XiaomiDeviceSupport.h">
+      <Filter>Devices\Xiaomi Gateway</Filter>
+    </ClInclude>
     <ClInclude Include="..\hardware\Limitless.h">
       <Filter>Devices\LimitlessLed</Filter>
     </ClInclude>
@@ -2212,6 +2215,9 @@
     </ClInclude>
     <ClInclude Include="..\hardware\eVehicles\TestcarApi.h">
       <Filter>Devices\eVehicles</Filter>
+    </ClInclude>
+    <ClInclude Include="..\hardware\TeleinfoTCP.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -2743,6 +2749,9 @@
     <ClCompile Include="..\hardware\XiaomiGateway.cpp">
       <Filter>Devices\Xiaomi Gateway</Filter>
     </ClCompile>
+    <ClCompile Include="..\hardware\XiaomiDeviceSupport.cpp">
+      <Filter>Devices\Xiaomi Gateway</Filter>
+    </ClCompile>
     <ClCompile Include="..\hardware\Limitless.cpp">
       <Filter>Devices\LimitlessLed</Filter>
     </ClCompile>
@@ -2958,6 +2967,9 @@
     </ClCompile>
     <ClCompile Include="..\hardware\eVehicles\TestcarApi.cpp">
       <Filter>Devices\eVehicles</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hardware\TeleinfoTCP.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
